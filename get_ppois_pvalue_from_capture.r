@@ -16,9 +16,10 @@ bed_file <- args[2] # test.bed
 cpu_numb <- args[3]
 
 # inputs
-#bam_file <- "test.bam"      # input bam file
-#bed_file <- "test.counts"   # target probe bed file with read counts per probe
-#cpu_number <- 2             # parallelize the huge bam counts step
+setwd("/Users/jtorchia/git/torchij/SimplePoisson/")
+bam_file <- "test.bam"      # input bam file
+bed_file <- "test.counts"   # target probe bed file with read counts per probe
+cpu_numb <- 2             # parallelize the huge bam counts step
 
 # sampling inputs
 bin_size <- 1000
@@ -73,27 +74,8 @@ results <- estimate_lambda(gr, bin_size, num_intv, num_reps)
 lambda <- results[[2]]$lambda
 counts_sum <- results[[1]]
 
-######################################################################################
-##### Step 2: Test poissonness of background and plot the empirical distribution  ####
-######################################################################################
-
-# poissonness test for background and foreground
-bg <- poissonness_test(counts_sum)
-k=bg[[1]]; f=bg[[2]]; r=bg[[3]]
-fg <- poissonness_test(df$counts)
-k2=fg[[1]]; f2=fg[[2]]; r2=fg[[3]]
-png(paste0(samp, ".gf.png"))
-    plot(k, f, col="black", main=paste0("poissonness test (bg) - ", as.character(signif(r, 4))))
-    points(k2, f2, col="red")
-dev.off()
-
-# plot empirical distribution of background
-png(paste0(samp, ".bg.hist.png"))
-    hist(counts_sum, breaks=50, main="background counts distribution")
-dev.off()
-
 ##################################################
-##### Step 3: Calculate normalized signal    #####
+##### Step 2: Calculate normalized signal    #####
 ##################################################
 
 # we use bedtools to get the counts per probe interval
@@ -115,6 +97,25 @@ df_agg <- aggregate(cbind(counts, size) ~ tloc, data = df, FUN = sum, na.rm = TR
 
 # normalize counts by size
 df_agg$counts_kb <- df_agg$counts / df_agg$size * 1000
+
+######################################################################################
+##### Step 3: Test poissonness of background and plot the empirical distribution  ####
+######################################################################################
+
+# poissonness test for background and foreground
+bg <- poissonness_test(counts_sum)
+k=bg[[1]]; f=bg[[2]]; r=bg[[3]]
+fg <- poissonness_test(df$counts)
+k2=fg[[1]]; f2=fg[[2]]; r2=fg[[3]]
+png(paste0(samp, ".gf.png"))
+    plot(k, f, col="black", main=paste0("poissonness test (bg) - ", as.character(signif(r, 4))))
+    points(k2, f2, col="red")
+dev.off()
+
+# plot empirical distribution of background
+png(paste0(samp, ".bg.hist.png"))
+    hist(counts_sum, breaks=50, main="background counts distribution")
+dev.off()
 
 #########################################################
 ##### Step 4: Apply poisson model to signal, lambda #####
