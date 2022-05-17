@@ -16,10 +16,10 @@ bed_file <- args[2] # test.bed
 cpu_numb <- args[3]
 
 # inputs
-setwd("/Users/jtorchia/git/torchij/SimplePoisson/")
-bam_file <- "test.bam"      # input bam file
-bed_file <- "test.counts"   # target probe bed file with read counts per probe
-cpu_numb <- 2             # parallelize the huge bam counts step
+#setwd("/Users/jtorchia/git/torchij/SimplePoisson/")
+#bam_file <- "test.bam"      # input bam file
+#bed_file <- "test.counts"   # target probe bed file with read counts per probe
+#cpu_numb <- 2             # parallelize the huge bam counts step
 
 # sampling inputs
 bin_size <- 1000
