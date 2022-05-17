@@ -87,7 +87,7 @@ cmd <- paste0("bedtools multicov -bams ", bam_file, " -bed ", bed_file)
 df <- fread(cmd=cmd)
 
 # rename columns
-colnames(df) <- c("chrom", "start", "end", "tloc", "score", "strand", "counts")
+colnames(df) <- c("chrom", "start", "end", "tloc", "probe", "counts")
 
 # add size of interval
 df$size <- df$end - df$start
