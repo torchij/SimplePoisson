@@ -2,7 +2,7 @@
 
 SimplePoisson is a basic r script which takes in a bam file from a capture experiment, and a bed file of the capture probe and targeted regions, and outputs a poisson-derived probability that the capture regions are enriched over background. In a way, its kind of like a super simplified peak-calling script, but only when data follows a poisson distribution.
 
-The script does three basic things:
+The script does four basic things:
 
 1) Estimate background lambda by sampling read counts from random regions of the bam file
 
@@ -17,11 +17,11 @@ The script does three basic things:
 The following R libraries are required:
 
 ```bash
-    library(rtracklayer)
-    library(data.table)
-    library(seqbias)
-    library(cn.mops)
-    library(vcd)
+    rtracklayer
+    data.table
+    seqbias
+    cn.mops
+    vcd
 ```
 
 ## Installation
