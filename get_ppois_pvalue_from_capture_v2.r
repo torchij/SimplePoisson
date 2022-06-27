@@ -12,10 +12,10 @@ if (length(args) != 4){
     library(GenomicAlignments)
 }
 
-#bam_file <- args[1] # test.bam
-#bed_file <- args[2] # test.bed
-#con_file <- args[3] # cont.bed
-#cpu_numb <- args[4] # cpu numb
+bam_file <- args[1] # test.bam
+bed_file <- args[2] # test.bed
+con_file <- args[3] # cont.bed
+cpu_numb <- args[4] # cpu numb
 
 # inputs test 3
 #setwd("/Users/jtorchia/git/torchij/SimplePoisson/")
