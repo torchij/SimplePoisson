@@ -11,49 +11,36 @@ if (length(args) != 3){
     library(vcd)
 }
 
-bam_file <- args[1] # test.bam
-bed_file <- args[2] # test.bed
-cpu_numb <- args[3]
+#bam_file <- args[1] # test.bam
+#bed_file <- args[2] # test.bed
+#con_file <- args[3] # cont.bed
+#cpu_numb <- args[4] # cpu numb
 
-# inputs
+# inputs test 1
 #setwd("/Users/jtorchia/git/torchij/SimplePoisson/")
-#bam_file <- "test.bam"      # input bam file
-#bed_file <- "test.counts"   # target probe bed file with read counts per probe
-#cpu_numb <- 2             # parallelize the huge bam counts step
+#bam_file <- "test.bam"      # input bam file (**NB** PREFILTERED TRANS-ONLY BAM)
+#bed_file <- "test.bed"      # target probe bed file
+#con_file <- "cont.bed"      # control probe bed file
+#cpu_numb <- 2               # parallelize the huge bam counts step
+
+# inputs test 2
+setwd("/Users/jtorchia/git/torchij/SimplePoisson")
+bam_file <- "test.bam"                              # input bam file
+bed_file <- "test.bed"                              # target probe bed file
+con_file <- "cont.bed"                              # control probe bed file
+cpu_numb <- 2                                       # parallelize the huge bam counts step
 
 # sampling inputs
-bin_size <- 1000
-num_intv <- 1000
 num_reps <- 1000
 
 # set output name
 samp <- gsub("\\.bam", "", basename(bam_file))
 
-estimate_lambda <- function(gr, bin_size, num_intv, num_reps) {
-   
-    int_size <- bin_size * num_intv
-
-    ### Method: sample n rows (num_intv) of binned counts
-    ### The goal is to select random regions of the genome,
-    ### sum the reads in that region, and define that as the
-    ### background rate
-    counts_sum <- replicate(num_reps, sum(sample(gr$sample, size=num_intv)))
-    counts_avg <- mean(counts_sum)
-    counts_std <- sd(counts_sum)
-    lambda <- counts_avg / int_size * 1000 # we set as a rate per kb
-    lambda_df <- data.frame(lambda=lambda, counts_avg=counts_avg, counts_std=counts_std)
-    results <- list(counts_sum, lambda_df)
-
-    # return list of counts stats and the lambda
-    return(results)
-
-}
-
-poissonness_test <- function(counts_sum) {
+poissonness_test <- function(counts) {
 
     # based on Hoaglin, 1980: “A poissonness plot”
-    n=length(counts_sum)
-    x=table(counts_sum)
+    n=length(counts)
+    x=table(counts)
     k=as.numeric(names(x))
     f=c(log(x) + lfactorial(k))
     r=n*(1-cor(k,log(x)+lfactorial(k))^2)
@@ -64,39 +51,42 @@ poissonness_test <- function(counts_sum) {
 
 ##################################################
 ##### Step 1: Estimate lambda from bam file  #####
-##################################################
-
-# get counts by bin size
-gr <- getReadCountsFromBAM(bam_file, sampleNames="sample", WL=bin_size, parallel=cpu_numb)
-
-# Estimate lambda
-results <- estimate_lambda(gr, bin_size, num_intv, num_reps)
-lambda <- results[[2]]$lambda
-counts_sum <- results[[1]]
-
-##################################################
-##### Step 2: Calculate normalized signal    #####
+##### (with control probes)                  #####
 ##################################################
 
 # we use bedtools to get the counts per probe interval
 # side note: there may be an r-native way to do this,
 # but bedtools does it so efficiently...
+cmd <- paste0("bedtools multicov -bams ", bam_file, " -bed ", con_file)
+
+# fread has a nice method to take output of system command
+df_con <- fread(cmd=cmd)
+
+# rename columns
+colnames(df_con) <- c("chrom", "start", "end", "probe", "score", "strand", "counts")
+
+# sample n rows from control (17 is the number of probes per tloc)
+counts_sum <- replicate(num_reps, sum(df_con[sample(nrow(df_con), 34), ]$counts))
+lambda <- median(counts_sum)
+
+# make a table for output
+lambda_df <- data.frame(lambda=lambda, counts_avg=mean(counts_sum), counts_std=sd(counts_sum))
+
+##################################################
+##### Step 2: Calculate normalized signal    #####
+##################################################
+
+# get counts per interval for the signal probes
 cmd <- paste0("bedtools multicov -bams ", bam_file, " -bed ", bed_file)
 
 # fread has a nice method to take output of system command
 df <- fread(cmd=cmd)
 
 # rename columns
-colnames(df) <- c("chrom", "start", "end", "tloc", "probe", "counts")
+colnames(df) <- c("chrom", "start", "end", "size", "strand", "tloc", "probe", "counts")
 
-# add size of interval
-df$size <- df$end - df$start
-
-# aggregate mean of coverage and control by translocation
-df_agg <- aggregate(cbind(counts, size) ~ tloc, data = df, FUN = sum, na.rm = TRUE)
-
-# normalize counts by size
-df_agg$counts_kb <- df_agg$counts / df_agg$size * 1000
+# aggregate by tloc
+df_agg <- aggregate(counts ~ tloc, data = df, FUN = sum, na.rm = TRUE)
 
 ######################################################################################
 ##### Step 3: Test poissonness of background and plot the empirical distribution  ####
@@ -105,7 +95,7 @@ df_agg$counts_kb <- df_agg$counts / df_agg$size * 1000
 # poissonness test for background and foreground
 bg <- poissonness_test(counts_sum)
 k=bg[[1]]; f=bg[[2]]; r=bg[[3]]
-fg <- poissonness_test(df$counts)
+fg <- poissonness_test(counts_sum)
 k2=fg[[1]]; f2=fg[[2]]; r2=fg[[3]]
 png(paste0(samp, ".gf.png"))
     plot(k, f, col="black", main=paste0("poissonness test (bg) - ", as.character(signif(r, 4))))
@@ -122,8 +112,8 @@ dev.off()
 #########################################################
 
 # calculate ppois (lambda is the average counts aggregated over a control sample)
-df_agg$pvalue <- ppois(q=df_agg$counts_kb, lambda=lambda, lower.tail=FALSE, log=FALSE)
+df_agg$pvalue <- ppois(q=df_agg$counts, lambda=lambda, lower.tail=FALSE, log=FALSE)
 
 # write to table
-write.table(df_agg, file=paste0(samp, ".results.txt"), sep="\t", row.names=FALSE)
-write.table(results[[2]], file=paste0(samp, ".lambda.txt"), sep="\t", row.names=FALSE)
+write.table(df_agg, file=paste0(samp, ".results.txt"), sep="\t", row.names=FALSE, quote=FALSE)
+write.table(lambda_df, file=paste0(samp, ".lambda.txt"), sep="\t", row.names=FALSE, quote=FALSE)
