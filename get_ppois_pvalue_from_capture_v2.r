@@ -1,6 +1,6 @@
 args = commandArgs(trailingOnly=TRUE)
 
-if (length(args) != 3){
+if (length(args) != 4){
     cat("Usage: get_ppois_from_bam.r bam_file bed_file cpu_number\n")
     quit(save="no")
 } else {
@@ -22,7 +22,7 @@ if (length(args) != 3){
 #bam_file <- "hcc1187_filtered.sorted.regions_v.b.2.1.bam"     # input bam file (**NB** PREFILTERED TRANS-ONLY BAM)
 #bed_file <- "regions_v.b.2.1.bed"
 #con_file <- "cont.bed"                              # control probe bed file
-cpu_numb <- 2                                       # parallelize the huge bam counts step
+#cpu_numb <- 2                                       # parallelize the huge bam counts step
 
 # sampling inputs
 num_reps <- 1000
